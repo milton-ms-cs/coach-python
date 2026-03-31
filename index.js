@@ -1,48 +1,98 @@
 (async function(codioIDE, window) {
-  
-  const systemPrompt = "You are a helpful assistant to a seventh grade student studying computer science for the first time.  They are learning HTML and Python this year. Please explain the course content in a simple and appropriate manner for a grade 7 student. For questions you can answer, focus your response on explaining concepts. Do not write programs for them.  The only code you can provide are syntax examples (ie how to format a for loop) or fixes to small bugs in their code.  If there are logic errors, point them out, but do not write new code. Help them think through the problem rather than giving them the answer. If asked about a syntax error, you can provide small corrections directly. If asked about context outside of the course materials, respond by saying that you can only answer questions about middle school computer science.  Keep responses brief and at a middle school reading level.  Do not respond with more than 250 words at a time. Do not give away direct solutions to any homework problems, projects, quizzes or other graded assignments in the course. If a student seems to be asking for a solution, gently remind them that you cannot provide answers to those types of questions.Remember not to write their code for them.";
 
-  codioIDE.coachBot.register("iNeedHelpButton", "Code Questions.", onButtonPress);
+  const systemPrompt = `You are a friendly and helpful coding coach for 7th grade students learning Python for the first time.
+
+When helping students:
+- Keep responses short — 2-3 sentences for simple questions, a short paragraph for bigger concepts.
+- Use plain, visual language: "This line tells Python to..." not "This invokes..."
+- Be encouraging: "Great question!", "You're really close!", "Nice start!"
+- Always look at the student's actual code (provided in <files> tags) before answering.
+- Reference the assignment guide (in <guide> tags) to understand what the student is working on.
+
+What you CAN do:
+- Explain what an error message means in plain language.
+- Point out bugs in their code and suggest specific fixes.
+- Write short example snippets (3-5 lines) that show how a concept works, with a brief explanation of each line.
+- Explain concepts like loops, variables, conditionals, and functions in simple terms.
+- Help them think through their logic step by step.
+
+What you CANNOT do:
+- Write complete programs or full solutions to assignments.
+- Do their homework for them. If they ask for a full solution, say something like: "I can't write that for you, but let me help you figure it out! What part are you stuck on?"
+- Answer questions outside of the course (other classes, general knowledge, etc.).
+
+If a student shares an error, explain what the error means, then point to the specific line in their code that caused it.`;
+
+  const exitPhrases = ["thanks", "thank you", "bye", "done", "exit", "quit", "stop", "no thanks", "i'm good", "im good", "that's all", "thats all"];
+
+  codioIDE.coachBot.register("iNeedHelpButton", "Code Questions", onButtonPress);
 
   async function onButtonPress() {
-    
     let messages = [];
-    
+
+    // Get initial context
+    const context = await codioIDE.coachBot.getContext();
+
+    const initialInput = await codioIDE.coachBot.input("What can I help you with?");
+
+    // Build structured first message with student's files and guide
+    const filesContent = (context.files && context.files.length > 0)
+      ? context.files.map(f => `File: ${f.path}\n${f.content}`).join('\n\n')
+      : "No files available.";
+
+    const guideContent = (context.guidesPage && context.guidesPage.content)
+      ? context.guidesPage.content
+      : "No guide available.";
+
+    const initialUserPrompt = `Here are the student's files:
+<files>
+${filesContent}
+</files>
+Here is the assignment guide:
+<guide>
+${guideContent}
+</guide>
+
+The student says: ${initialInput}`;
+
+    messages.push({
+      "role": "user",
+      "content": initialUserPrompt
+    });
+
+    let result = await codioIDE.coachBot.ask({
+      systemPrompt: systemPrompt,
+      messages: messages
+    }, {preventMenu: true});
+
+    messages.push({"role": "assistant", "content": result.result});
+
     while (true) {
+      const input = await codioIDE.coachBot.input("What else can I help you with?");
 
-      const input = await codioIDE.coachBot.input();
-
-      if (input === "Thanks") {
+      if (exitPhrases.some(phrase => input.toLowerCase().includes(phrase))) {
         break;
       }
-      
-      // Fetch updated context each time to capture any changes
-      const context = await codioIDE.coachBot.getContext();
-
-      const userPrompt = `Here is the question the student has asked with context:\n<student_question>\n${input}\n</student_question>\n\nContext:\n${JSON.stringify(context)}\n Please provide your response to the student by following the specified guidelines. \
-      Remember, do not give away any answers or solutions to assignment questions or quizzes. \
-      Double check and make sure to respond to questions that are related to the course only.\
-      For simple questions, keep your answer brief and short."`;
 
       messages.push({
         "role": "user",
-        "content": userPrompt
+        "content": input
       });
 
-      const result = await codioIDE.coachBot.ask({
+      result = await codioIDE.coachBot.ask({
         systemPrompt: systemPrompt,
         messages: messages
-      }, { preventMenu: true });
+      }, {preventMenu: true});
 
-      messages.push({ "role": "assistant", "content": result.result });
+      messages.push({"role": "assistant", "content": result.result});
 
-      if (messages.length > 10) {
-        messages.splice(0, 2);
+      // Keep first message (with files + guide) + last 8 messages (4 exchanges)
+      if (messages.length > 9) {
+        messages = [messages[0], ...messages.slice(-8)];
       }
     }
 
-    codioIDE.coachBot.write("You're welcome! Please feel free to ask any more questions about this course!");
+    codioIDE.coachBot.write("You're welcome! Let me know if you have more questions.");
     codioIDE.coachBot.showMenu();
   }
-
 })(window.codioIDE, window);
