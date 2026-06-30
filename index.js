@@ -21,7 +21,24 @@ What you CANNOT do:
 - Do their homework for them. If they ask for a full solution, say something like: "I can't write that for you, but let me help you figure it out! What part are you stuck on?"
 - Answer questions outside of the course (other classes, general knowledge, etc.).
 
-If a student shares an error, explain what the error means, then point to the specific line in their code that caused it.`;
+If a student shares an error, explain what the error means, then point to the specific line in their code that caused it.
+
+## Diagnosing vs. solving
+
+There are two very different kinds of help, and you should treat them differently.
+
+**Diagnosing — be direct and specific. Point right at the problem:**
+- Error messages and tracebacks (SyntaxError, NameError, IndentationError, TypeError, etc.) — explain what the error is saying in plain English and point to the exact line.
+- Typos in keywords, function names, or variable names.
+- Missing punctuation: missing colon after if/while/for/def, mismatched parentheses or quotes, wrong indentation.
+- Using = instead of == in a comparison.
+
+For these, just tell them what's wrong and where. They can fix it themselves once they see it.
+
+**Solving — make THEM do the work:**
+- "How do I write a loop that does X?" / "How do I write a function that calculates Y?" / "How do I check if a number is even?" — these are design questions, not bug questions. Don't write the answer. Teach the concept, then ask them to try.
+- "Can you write this function for me?" — no. Walk them through what it should do in plain English, one step at a time.
+- "My program doesn't work" — break it into the smallest first step ("Let's start with just printing the input. What does your code do right now?") and only help with that one step.`;
 
   const exitPhrases = ["thanks", "thank you", "bye", "done", "exit", "quit", "stop", "no thanks", "i'm good", "im good", "that's all", "thats all"];
 
@@ -50,6 +67,10 @@ If a student shares an error, explain what the error means, then point to the sp
       ? context.guidesPage.content
       : "No guide available.";
 
+    const assignmentName = (context.assignmentData && context.assignmentData.name)
+      ? context.assignmentData.name
+      : null;
+
     const initialUserPrompt = `Here are the student's files:
 <files>
 ${filesContent}
@@ -58,7 +79,7 @@ Here is the assignment guide:
 <guide>
 ${guideContent}
 </guide>
-
+${assignmentName ? `\nAssignment: ${assignmentName}\n` : ''}
 The student says: ${initialInput}`;
 
     messages.push({
@@ -67,6 +88,7 @@ The student says: ${initialInput}`;
     });
 
     try {
+      codioIDE.coachBot.showThinkingAnimation();
       const result = await codioIDE.coachBot.ask({
         systemPrompt: systemPrompt,
         messages: messages
@@ -75,6 +97,8 @@ The student says: ${initialInput}`;
     } catch (e) {
       codioIDE.coachBot.write("Hmm, something went wrong on my end. Try asking that again!");
       messages.pop();
+    } finally {
+      codioIDE.coachBot.hideThinkingAnimation();
     }
 
     while (true) {
@@ -96,6 +120,7 @@ The student says: ${initialInput}`;
       });
 
       try {
+        codioIDE.coachBot.showThinkingAnimation();
         const result = await codioIDE.coachBot.ask({
           systemPrompt: systemPrompt,
           messages: messages
@@ -105,6 +130,8 @@ The student says: ${initialInput}`;
         codioIDE.coachBot.write("Hmm, something went wrong on my end. Try asking that again!");
         messages.pop();
         continue;
+      } finally {
+        codioIDE.coachBot.hideThinkingAnimation();
       }
 
       // Keep first message (with files + guide) + last 8 messages (4 exchanges)

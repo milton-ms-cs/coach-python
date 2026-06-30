@@ -1,13 +1,7 @@
-# custom-assistant-example-multiturn-chat
-This assistant is designed to answer student questions about the Intro to Python course, without giving away solutions.
+# ms-python-assistant
 
-The system prompt contains the course structure with module and assignment names. It also has general guidelines for the LLM to follow. (make changes here to adapt this for any course)
+Codio Custom Assistant ("Python Coach") for 7th grade students learning intro Python at Milton Academy.
 
-It starts a new chat session on every button click.
-The message history of the last 4-5 interactions in the session is passed back to the LLM as context before it answers the next question.
+It starts a new chat session on every button click, sees the student's open files and assignment guide, and answers questions without writing full solutions. The message history (last 4 exchanges) is kept in context as the conversation continues. This is the simplest of the six coaches in this workspace — a good starting template for new ones.
 
-NOTE:
-The system prompt in this example is merely an example, and does not set comprehensive guidelines that cover all scenarios.
-Please go over the `index.js` file and update the `systemPrompt` variable with all the guardrails and guidelines you'd prefer your AI assistant to have.
-
-
+See the top-level `coaches/CLAUDE.md` for the shared architecture all six coaches follow, and `coaches/codio-custom-assistants.md` for Codio's deployment/release docs.
