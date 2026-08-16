@@ -1,5 +1,7 @@
 (async function(codioIDE, window) {
 
+  const VERSION = "5.6.0";
+
   const systemPrompt = `You are a friendly and helpful coding coach for 7th grade students learning Python for the first time.
 
 When helping students:
@@ -44,21 +46,12 @@ For these, just tell them what's wrong and where. They can fix it themselves onc
 
   codioIDE.coachBot.register("pythonCoachHelp", "Python Coach", onButtonPress);
 
-  async function onButtonPress() {
-    let messages = [];
-
-    // Get initial context
+  // Build the context-bearing first message from a fresh getContext() read.
+  // Re-run before every ask() so the coach sees the student's latest edits,
+  // not their code as of the button press.
+  async function buildContextMessage(initialInput) {
     const context = await codioIDE.coachBot.getContext();
 
-    let initialInput;
-    try {
-      initialInput = await codioIDE.coachBot.input("What can I help you with?");
-    } catch (e) {
-      codioIDE.coachBot.showMenu();
-      return;
-    }
-
-    // Build structured first message with student's files and guide
     const filesContent = (context.files && context.files.length > 0)
       ? context.files.map(f => `File: ${f.path}\n${f.content}`).join('\n\n')
       : "No files available.";
@@ -71,7 +64,7 @@ For these, just tell them what's wrong and where. They can fix it themselves onc
       ? context.assignmentData.name
       : null;
 
-    const initialUserPrompt = `Here are the student's files:
+    return `Here are the student's files (current as of their latest question):
 <files>
 ${filesContent}
 </files>
@@ -81,10 +74,36 @@ ${guideContent}
 </guide>
 ${assignmentName ? `\nAssignment: ${assignmentName}\n` : ''}
 The student says: ${initialInput}`;
+  }
+
+  async function onButtonPress() {
+    codioIDE.coachBot.write(
+      `Python Coach v${VERSION} - Ask me your Python questions!`,
+      codioIDE.coachBot.MESSAGE_ROLES.ASSISTANT
+    );
+
+    let messages = [];
+
+    let initialInput;
+    while (true) {
+      try {
+        initialInput = await codioIDE.coachBot.input("What can I help you with?");
+      } catch (e) {
+        codioIDE.coachBot.showMenu();
+        return;
+      }
+
+      if (initialInput === "version") {
+        codioIDE.coachBot.write(`Current version: ${VERSION}`, codioIDE.coachBot.MESSAGE_ROLES.ASSISTANT);
+        continue;
+      }
+
+      break;
+    }
 
     messages.push({
       "role": "user",
-      "content": initialUserPrompt
+      "content": await buildContextMessage(initialInput)
     });
 
     try {
@@ -109,6 +128,11 @@ The student says: ${initialInput}`;
         break;
       }
 
+      if (input === "version") {
+        codioIDE.coachBot.write(`Current version: ${VERSION}`, codioIDE.coachBot.MESSAGE_ROLES.ASSISTANT);
+        continue;
+      }
+
       const trimmedInput = input.trim().toLowerCase();
       if (exitPhrases.includes(trimmedInput)) {
         break;
@@ -118,6 +142,13 @@ The student says: ${initialInput}`;
         "role": "user",
         "content": input
       });
+
+      // Refresh the context block so the coach sees the student's latest edits
+      try {
+        messages[0] = { "role": "user", "content": await buildContextMessage(initialInput) };
+      } catch (e) {
+        // Keep the previous context if the refresh fails
+      }
 
       try {
         codioIDE.coachBot.showThinkingAnimation();
