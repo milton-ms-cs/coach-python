@@ -23,7 +23,7 @@ Every change to `index.js` or `metadata.json` needs a new GitHub release, with a
 
 ## Session log
 
-Each coach session adds a short summary to a hidden `.coach-log.json` file in the student's workspace: when it started and ended, the coach version, how many questions were asked, and the questions themselves (up to 50, each cut to 300 characters). Codio's own coach-log export leaves the student's question blank for message-based coaches like this one, so this file is the only record of what students asked. It's never sent to the model, and logging can't break the coach.
+Each coach session adds a short summary to a hidden `.coach-log.json` file in the student's workspace: when it started and ended, the coach version, how many questions were asked, and the questions themselves (up to 50, each cut to 300 characters), plus a short hash of the files the coach saw each turn (`contextFingerprints`, so a review can tell whether the student's files changed) and a count of failed or empty replies (`failedReplies`). Strict mode: when this workspace's own log shows a student leaning on the coach (many questions, or a run of "next"/"show me" asks), the coach quietly adds a "try it first" nudge to its instructions and records `strict`, `strictReason` and `strictReleased` for that session. It still answers every question and never mentions the mode. Codio's own coach-log export leaves the student's question blank for message-based coaches like this one, so this file is the only record of what students asked. It's never sent to the model, and logging can't break the coach.
 
 ## Development
 
